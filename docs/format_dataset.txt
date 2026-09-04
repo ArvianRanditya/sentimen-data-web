@@ -1,0 +1,29 @@
+================================================================================
+            FORMAT DATASET UNTUK UPLOAD (FORMAT CSV / TXT BERSTRUKTUR)
+================================================================================
+
+Agar file dataset ulasan Anda dapat dibaca dengan sukses oleh sistem, pastikan:
+1. File disimpan dengan ekstensi ".csv" (atau ".xlsx" untuk Excel).
+2. Terdapat baris header/judul kolom paling atas.
+3. Wajib memiliki satu kolom bernama "Review" (huruf R kapital).
+
+--------------------------------------------------------------------------------
+CONTOH ISI FILE (Format CSV Standar):
+--------------------------------------------------------------------------------
+Review
+Aplikasi ini sangat bagus dan mudah digunakan untuk mencari ulasan!
+Pelayanannya buruk sekali, responnya lambat dan tidak ramah.
+Biasa saja sih, fiturnya masih standar tapi lumayan berguna.
+Sangat membantu tugas akhir saya tentang sentiment analysis.
+Kecewa banget, aplikasinya sering eror dan keluar sendiri.
+
+--------------------------------------------------------------------------------
+PANDUAN PEMBUATAN FILE:
+--------------------------------------------------------------------------------
+1. Buka aplikasi notepad, text editor, atau Excel.
+2. Di baris pertama (paling atas), tulis kata: Review
+3. Di baris-baris berikutnya, tulis setiap ulasan Anda (satu baris untuk satu ulasan).
+4. Jika ulasan mengandung koma, sebaiknya ulasan tersebut diapit tanda kutip ganda, contoh:
+   "Aplikasi ini bagus, tapi kadang-kadang lambat."
+5. Simpan file dengan nama sesukamu, pastikan ekstensinya adalah .csv
+   Contoh: data_ulasan_saya.csv

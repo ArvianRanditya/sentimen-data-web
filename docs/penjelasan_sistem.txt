@@ -1,0 +1,76 @@
+================================================================================
+                    SISTEM SENTIMENAI - OVERVIEW & PIPELINE
+================================================================================
+
+SentimenAI adalah aplikasi dashboard komprehensif untuk menganalisis sentimen 
+dan melakukan pengelompokan (clustering) pada data ulasan (seperti review 
+Google Maps). Sistem ini menggunakan arsitektur modern terpisah (decoupled) 
+antara Backend (Python FastAPI) dan Frontend (Vue.js 3).
+
+--------------------------------------------------------------------------------
+1. ARSITEKTUR UTAMA
+--------------------------------------------------------------------------------
+- Backend (Port 8000):
+  Berjalan menggunakan Python & FastAPI. Menangani pemrosesan bahasa alami (NLP),
+  K-Means Clustering, Lexicon Sentiment Labeling, dan Machine Learning (Random Forest).
+  Lokasi file: backend/
+
+- Frontend (Port 5173):
+  Berjalan menggunakan Vue.js 3, Vite, dan Tailwind CSS. Menyajikan antarmuka 
+  interaktif untuk memandu pengguna dari awal hingga akhir analisis.
+  Lokasi file: frontend/
+
+- Komunikasi:
+  Frontend mengirimkan data/permintaan melalui Axios (HTTP Request) ke Backend 
+  dan menerima respon data dalam format JSON.
+
+--------------------------------------------------------------------------------
+2. ALUR PIPELINE (9 LANGKAH)
+--------------------------------------------------------------------------------
+Langkah 1: Input Data
+- Pengguna mengunggah dataset CSV/Excel dengan kolom 'Review', atau melakukan
+  scraping ulasan langsung dari Google Maps.
+
+Langkah 2: Preprocessing
+- Pembersihan teks otomatis: case folding (huruf kecil), filtering (hapus angka/tanda
+  baca), stopword removal (hapus kata hubung), dan stemming Bahasa Indonesia 
+  (menggunakan PySastrawi untuk mencari kata dasar).
+
+Langkah 3: Clustering (K-Means)
+- Pengelompokan ulasan secara otomatis berdasarkan kesamaan kata. Dilengkapi dengan
+  evaluasi Elbow Method, Silhouette Score, dan Calinski-Harabasz Score.
+
+Langkah 4: Topik Cluster
+- Mengambil kata-kata kunci dominan dari masing-masing kelompok menggunakan TF-IDF.
+
+Langkah 5: Labeling Sentimen
+- Pemberian label sentimen otomatis (Positif / Netral / Negatif) menggunakan 
+  pendekatan kamus kata Lexicon Bahasa Indonesia.
+
+Langkah 6: Training Model
+- Melatih model klasifikasi Random Forest berdasarkan data yang telah diberi label.
+
+Langkah 7: Evaluasi Model
+- Menampilkan grafik Confusion Matrix serta laporan performa model (Accuracy, 
+  Precision, Recall, F1-Score).
+
+Langkah 8: Insight
+- Dashboard ringkasan analisis visual global (distribusi sentimen dan sebaran cluster).
+
+Langkah 9: Klasifikasi Baru
+- Memprediksi ulasan baru secara mandiri (single text) atau secara massal (batch 
+  upload file baru).
+
+--------------------------------------------------------------------------------
+3. PENYIMPANAN DATA & SESI
+--------------------------------------------------------------------------------
+- Sesi diidentifikasi menggunakan Session ID unik yang disimpan di LocalStorage 
+  browser pengguna.
+- File pemrosesan sementara disimpan di folder "backend/temp_data/" dengan format:
+  * {session_id}_raw.csv
+  * {session_id}_clean.csv
+  * {session_id}_preprocessed.csv
+  * {session_id}_clustered.csv
+  * {session_id}_labeled.csv
+- Model hasil training disimpan di folder "backend/models/" dalam format .pkl 
+  agar bisa digunakan kembali tanpa train ulang.

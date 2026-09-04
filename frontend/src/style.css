@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* Override default dark mode variant to use class selection in Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: #334155; /* slate-700 in light mode */
+  background-color: #f8fafc; /* slate-50 in light mode */
+
+  scroll-behavior: smooth;
+}
+
+/* Base styles for dark mode */
+html.dark {
+  color: #cbd5e1; /* slate-300 in dark mode */
+  background-color: #090d16; /* deep dark in dark mode */
+}
+
+/* Transition smooth globally for background and borders */
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR — Minimalist & Adaptive
+   ============================================================ */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9; /* Slate scrollbar for light mode */
+}
+
+html.dark * {
+  scrollbar-color: #334155 #0d1527; /* Slate scrollbar for dark mode */
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #0d1527;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Horizontal scrollbar inside tables — lebih tipis */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 4px;
+}
+
+/* Sidebar custom scroll */
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar {
+  width: 3px;
+}

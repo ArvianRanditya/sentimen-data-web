@@ -1,0 +1,11 @@
+streamlit
+pandas
+scikit-learn
+joblib
+Sastrawi
+nltk
+openpyxl
+google-search-results
+seaborn
+streamlit-option-menu
+wordcloud
