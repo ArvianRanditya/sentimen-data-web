@@ -28,7 +28,7 @@ from utils.preprocessing import preprocess_pipeline
 from utils.predictor import predict_sentiment, predict_cluster
 from utils.topic_rules import TOPIC_RULES
 from utils.nlg import generate_nlg_recommendation
-from utils.rag_chat import retrieve_context, call_gemini_rag_chat
+from utils.rag_chat import retrieve_context, call_gemini_rag_chat, answer_with_local_engine
 
 app = FastAPI(title="Sentiment Analysis API")
 
@@ -91,6 +91,7 @@ class ChatRequest(BaseModel):
     session_id: str
     message: str
     history: list[ChatMessage] = []
+    mode: str = "local"
 
 
 # ==========================================
@@ -98,6 +99,17 @@ class ChatRequest(BaseModel):
 # ==========================================
 def get_file_path(session_id: str, stage: str = "raw"):
     return os.path.join(TEMP_DIR, f"{session_id}_{stage}.csv")
+
+
+def clean_records(df, n=None):
+    """Safely converts DataFrame or DataFrame slice to JSON-compliant records list (NaN/Inf -> null)."""
+    if df is None:
+        return []
+    sub = df.head(n) if n is not None else df
+    if len(sub) == 0:
+        return []
+    return json.loads(sub.to_json(orient="records"))
+
 
 
 # ==========================================
@@ -148,7 +160,7 @@ async def upload_file(file: UploadFile = File(...)):
         # Save as CSV for consistent processing downstream
         df.to_csv(file_path, index=False)
         
-        preview = df.head(20).to_dict(orient="records")
+        preview = clean_records(df, 20)
         
         return {
             "session_id": session_id,
@@ -190,7 +202,7 @@ async def scrape_data(request: ScrapeRequest):
         )
 
         # preview data
-        preview = df.head(20).to_dict(orient="records")
+        preview = clean_records(df, 20)
 
         return {
             "session_id": session_id,
@@ -247,7 +259,7 @@ async def clean_data(request: SessionRequest):
     clean_path = get_file_path(request.session_id, "clean")
     df.to_csv(clean_path, index=False)
     
-    preview = df.head(20).to_dict(orient="records")
+    preview = clean_records(df, 20)
     
     return {
         "message": "Cleaning selesai",
@@ -288,7 +300,7 @@ async def preprocess_data(request: SessionRequest):
     preprocessed_path = get_file_path(request.session_id, "preprocessed")
     df.to_csv(preprocessed_path, index=False)
     
-    preview = df.head(10).to_dict(orient="records")
+    preview = clean_records(df, 10)
     return {"message": "Preprocessing finished", "total_rows": len(df), "preview": preview}
 
 #   DOWNLOAD PRE PROCESS
@@ -431,8 +443,8 @@ async def apply_cluster(request: ClusterApplyRequest):
     
     df.to_csv(get_file_path(request.session_id, "clustered"), index=False)
     
-    dist = df["cluster"].value_counts().to_dict()
-    preview = df.head(10).to_dict(orient="records")
+    dist = {str(k): int(v) for k, v in df["cluster"].value_counts().items()}
+    preview = clean_records(df, 10)
     return {"message": "Clustering applied", "distribution": dist, "preview": preview}
 
 
@@ -640,6 +652,7 @@ async def get_insight(request: SessionRequest):
 # 4.7. NLG RECOMMENDATIONS
 class NLGRequest(BaseModel):
     session_id: str
+    mode: str = "local"
 
 @app.post("/api/nlg/recommend")
 async def generate_nlg(request: NLGRequest):
@@ -718,20 +731,22 @@ async def generate_nlg(request: NLGRequest):
             positif=positif,
             netral=netral,
             negatif=negatif,
-            total=total
+            total=total,
+            mode=request.mode
         )
         
         nlg_results[str(cluster_id)] = {
             "topic_name": topic_name,
             "keywords": top_words,
-            "recommendation": recommendation
+            "recommendation": recommendation,
+            "mode": request.mode
         }
         
     nlg_path = os.path.join(TEMP_DIR, f"{request.session_id}_nlg.json")
     with open(nlg_path, "w", encoding="utf-8") as f:
         json.dump(nlg_results, f, ensure_ascii=False)
         
-    return {"nlg_recommendations": nlg_results}
+    return {"nlg_recommendations": nlg_results, "mode": request.mode}
 
 
 # 4.8. RAG CHATBOT ASSISTANT
@@ -743,16 +758,26 @@ async def chat_with_reviews(request: ChatRequest):
     # Konversi model pydantic ke dictionary untuk diolah di utils
     history_list = [{"role": msg.role, "content": msg.content} for msg in request.history]
     
-    # 2. Panggil API Gemini
-    answer = call_gemini_rag_chat(
-        query=request.message,
-        context=context,
-        history=history_list
-    )
+    # 2. Panggil engine sesuai pilihan mode (local vs gemini)
+    if request.mode == "gemini":
+        answer = call_gemini_rag_chat(
+            query=request.message,
+            context=context,
+            history=history_list
+        )
+    else:
+        answer = answer_with_local_engine(
+            session_id=request.session_id,
+            query=request.message,
+            context=context,
+            retrieved_items=retrieved_items,
+            history=history_list
+        )
     
     return {
         "answer": answer,
-        "retrieved_context": retrieved_items
+        "retrieved_context": retrieved_items,
+        "mode": request.mode
     }
 
 
@@ -807,9 +832,9 @@ async def label_sentiment(request: SessionRequest):
         index=False
     )
 
-    dist = df["sentiment_label"].value_counts().to_dict()
+    dist = {str(k): int(v) for k, v in df["sentiment_label"].value_counts().items()}
 
-    preview = df.head(10).to_dict(orient="records")
+    preview = clean_records(df, 10)
 
     return {
         "message": "Prediction applied",
@@ -1043,7 +1068,7 @@ async def predict_batch(file: UploadFile = File(...)):
         label_map = {0: "Negatif", 1: "Netral", 2: "Positif"}
         df["sentimen"] = df["sentiment_label"].map(label_map)
         
-        predictions = df[["Review","clean","sentiment_label","sentimen","cluster","topic"]].head(100).to_dict(orient="records")
+        predictions = clean_records(df[["Review","clean","sentiment_label","sentimen","cluster","topic"]], 100)
         
         return {
             "total": len(df),

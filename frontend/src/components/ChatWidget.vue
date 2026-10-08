@@ -8,11 +8,13 @@ const isOpen = ref(false);
 const messageInput = ref("");
 const isLoading = ref(false);
 const chatContainer = ref(null);
+const chatMode = ref("local"); // "local" or "gemini"
 
 const messages = ref([
   {
     role: "assistant",
     content: "Halo! Saya adalah Asisten AI Unwahas. Tanyakan apa saja tentang ulasan/review yang sudah Anda unggah.",
+    mode: "local",
   },
 ]);
 
@@ -42,16 +44,22 @@ const handleSendMessage = async () => {
       session_id: store.sessionId,
       message: userText,
       history: historyPayload,
+      mode: chatMode.value,
     });
 
     messages.value.push({
       role: "assistant",
       content: response.data.answer,
+      mode: response.data.mode || chatMode.value,
     });
   } catch (error) {
+    const errMsg = chatMode.value === "gemini"
+      ? "Maaf, asisten Gemini API gagal memproses pesan. Pastikan GEMINI_API_KEY sudah disetel atau coba beralih ke Mode Lokal."
+      : "Maaf, sistem lokal gagal memproses pesan. Pastikan dataset sudah diunggah dan diproses.";
     messages.value.push({
       role: "assistant",
-      content: "Maaf, asisten AI gagal memproses pesan Anda. Pastikan API Key Gemini sudah terpasang di file `.env` backend Anda.",
+      content: errMsg,
+      mode: chatMode.value,
     });
   } finally {
     isLoading.value = false;

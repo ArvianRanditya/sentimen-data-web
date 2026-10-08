@@ -33,6 +33,7 @@ const clusterNotes = ref({});
 
 const isNlgLoading = ref(false);
 const nlgError = ref("");
+const nlgMode = ref("local"); // 'local' or 'gemini'
 
 const chartCluster = ref(null);
 const chartSentiment = ref(null);
@@ -151,6 +152,7 @@ const generateNlgRecommendations = async () => {
   try {
     const res = await api.post("/api/nlg/recommend", {
       session_id: store.sessionId,
+      mode: nlgMode.value,
     });
     if (insightData.value) {
       insightData.value.nlg_recommendations = res.data.nlg_recommendations;
@@ -383,20 +385,53 @@ onMounted(() => {
             Asisten AI akan menganalisis kata kunci TF-IDF dan orientasi sentimen di setiap cluster untuk menyusun ringkasan naratif otomatis serta rekomendasi praktis.
           </p>
         </div>
-        <button
-          @click="generateNlgRecommendations"
-          :disabled="isNlgLoading"
-          class="flex-shrink-0 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/10 cursor-pointer"
-        >
-          <svg v-if="isNlgLoading" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-          <svg v-else class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          {{ isNlgLoading ? "Menganalisis..." : "Generasikan Rekomendasi NLG" }}
-        </button>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <!-- Mode Switcher -->
+          <div class="flex items-center bg-white/80 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+            <button
+              type="button"
+              @click="nlgMode = 'local'"
+              :class="[
+                'px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+                nlgMode === 'local'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              ]"
+            >
+              <span>💻</span>
+              <span>Sistem Lokal (Offline)</span>
+            </button>
+            <button
+              type="button"
+              @click="nlgMode = 'gemini'"
+              :class="[
+                'px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+                nlgMode === 'gemini'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              ]"
+            >
+              <span>✨</span>
+              <span>Gemini API (Cloud)</span>
+            </button>
+          </div>
+
+          <!-- Generate Button -->
+          <button
+            @click="generateNlgRecommendations"
+            :disabled="isNlgLoading"
+            class="flex-shrink-0 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/10 cursor-pointer"
+          >
+            <svg v-if="isNlgLoading" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <svg v-else class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            {{ isNlgLoading ? "Menganalisis..." : `Generasikan (${nlgMode === 'local' ? 'Lokal' : 'Gemini'})` }}
+          </button>
+        </div>
       </div>
 
       <!-- NLG Error -->
@@ -444,11 +479,20 @@ onMounted(() => {
 
             <!-- Smart recommendations from NLG -->
             <div class="mb-5 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800/60">
-              <div class="flex items-center gap-1.5 mb-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Rekomendasi Pintar (NLG)
+              <div class="flex items-center justify-between mb-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Rekomendasi Pintar (NLG)
+                </div>
+                <span
+                  v-if="insightData.nlg_recommendations && insightData.nlg_recommendations[cluster.cluster]?.mode"
+                  class="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                  :class="insightData.nlg_recommendations[cluster.cluster].mode === 'gemini' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'"
+                >
+                  {{ insightData.nlg_recommendations[cluster.cluster].mode === 'gemini' ? '✨ Gemini AI' : '💻 Sistem Lokal' }}
+                </span>
               </div>
               
               <div v-if="insightData.nlg_recommendations && insightData.nlg_recommendations[cluster.cluster]" class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">

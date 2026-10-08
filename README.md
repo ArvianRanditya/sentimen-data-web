@@ -50,7 +50,27 @@ Berjalan di **Port 5173** menggunakan:
 
 Aplikasi ini terdiri dari dua bagian yang berjalan secara bersamaan: **Backend** (pemroses data) dan **Frontend** (tampilan antarmuka). Kamu harus menjalankan keduanya agar aplikasi berfungsi penuh.
 
-### Persiapan Awal (Wajib)
+### ⚡ Cara Instan Menggunakan OrbStack / Docker (Rekomendasi di Mac)
+
+Jika kamu menggunakan **Mac dengan OrbStack** (atau Docker), kamu **tidak perlu** menginstall Python dan Node.js secara manual di host:
+
+1. **Jalankan aplikasi:**
+   ```bash
+   ./run.sh start
+   # atau: docker compose up -d
+   ```
+2. **Akses di Browser:**
+   - **Frontend**: [http://localhost:5173](http://localhost:5173) (atau [http://sentimen-frontend.orb.local](http://sentimen-frontend.orb.local))
+   - **Backend API**: [http://localhost:8000](http://localhost:8000) (Dokumentasi API: [http://localhost:8000/docs](http://localhost:8000/docs))
+
+Perintah lainnya:
+- `./run.sh logs` : Melihat log container secara langsung
+- `./run.sh stop` : Menghentikan container
+- `./run.sh build`: Membangun ulang image jika ada dependency baru
+
+---
+
+### Cara Manual (Tanpa Docker)
 Sebelum mulai, pastikan komputermu sudah ter-install 2 aplikasi ini:
 1. **Python** (Minimal versi 3.9)
    - Download di: [python.org/downloads](https://www.python.org/downloads/)

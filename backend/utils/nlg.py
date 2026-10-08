@@ -7,18 +7,21 @@ from dotenv import load_dotenv
 # Load env variables
 load_dotenv()
 
-def generate_nlg_recommendation(topic_name, keywords, positif, netral, negatif, total):
+def generate_nlg_recommendation(topic_name, keywords, positif, netral, negatif, total, mode: str = "local"):
     """
     Generate narrative recommendation based on sentiment and keywords.
-    Will try to use LLM APIs if keys are available in .env, otherwise falls back to template-based NLG.
+    mode can be "local" (built-in offline template) or "gemini" (cloud AI).
     """
-    
-    # Check if there is any LLM configured
-    openai_key = os.getenv("OPENAI_API_KEY")
-    gemini_key = os.getenv("GEMINI_API_KEY")
-    groq_key = os.getenv("GROQ_API_KEY")
-    ollama_url = os.getenv("OLLAMA_API_URL") # e.g. http://localhost:11434
-    
+    if mode == "local":
+        return generate_template_based_nlg(topic_name, keywords, positif, netral, negatif, total)
+
+    # Cloud AI mode (Gemini)
+    load_dotenv(override=True)
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not gemini_key or gemini_key == "your_gemini_api_key_here":
+        fallback = generate_template_based_nlg(topic_name, keywords, positif, netral, negatif, total)
+        return f"{fallback}\n\n*(Catatan: Menggunakan Sistem Lokal karena GEMINI_API_KEY belum dikonfigurasi di file .env)*"
+
     prompt = f"""
     Anda adalah seorang asisten AI akademis/universitas dan ahli analisis teks. 
     Buatlah sebuah narasi rekomendasi tindak lanjut singkat (1-2 paragraf, maksimal 120 kata) dalam Bahasa Indonesia yang profesional dan ramah pengguna berdasarkan data cluster ulasan mahasiswa berikut:
@@ -34,32 +37,12 @@ def generate_nlg_recommendation(topic_name, keywords, positif, netral, negatif, 
     4. Tulis langsung narasinya saja tanpa embel-embel kalimat pembuka seperti "Tentu, ini rekomendasinya:" atau tanda kutip.
     """.strip()
 
-    if openai_key:
-        try:
-            return call_openai(openai_key, prompt)
-        except Exception as e:
-            print(f"OpenAI NLG failed, falling back to template. Error: {str(e)}")
-            
-    if gemini_key:
-        try:
-            return call_gemini(gemini_key, prompt)
-        except Exception as e:
-            print(f"Gemini NLG failed, falling back to template. Error: {str(e)}")
-
-    if groq_key:
-        try:
-            return call_groq(groq_key, prompt)
-        except Exception as e:
-            print(f"Groq NLG failed, falling back to template. Error: {str(e)}")
-
-    if ollama_url:
-        try:
-            return call_ollama(ollama_url, prompt)
-        except Exception as e:
-            print(f"Ollama NLG failed, falling back to template. Error: {str(e)}")
-            
-    # Fallback to high quality template-based NLG
-    return generate_template_based_nlg(topic_name, keywords, positif, netral, negatif, total)
+    try:
+        return call_gemini(gemini_key, prompt)
+    except Exception as e:
+        print(f"Gemini NLG failed: {str(e)}")
+        fallback = generate_template_based_nlg(topic_name, keywords, positif, netral, negatif, total)
+        return f"{fallback}\n\n*(Catatan: Menggunakan Sistem Lokal karena koneksi Gemini API gagal/terkendala: {str(e)})*"
 
 
 def call_openai(api_key, prompt):
@@ -88,9 +71,15 @@ def call_openai(api_key, prompt):
 
 
 def call_gemini(api_key, prompt):
-    model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    load_dotenv(override=True)
+    preferred_model = os.getenv("GEMINI_MODEL", "gemini-3.7-flash").strip()
     
+    # Model candidates in priority order
+    models_to_try = [preferred_model]
+    for m in ["gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"]:
+        if m not in models_to_try:
+            models_to_try.append(m)
+
     headers = {
         "Content-Type": "application/json"
     }
@@ -109,10 +98,29 @@ def call_gemini(api_key, prompt):
         }
     }
     
-    req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers)
-    with urllib.request.urlopen(req, timeout=90) as response:
-        res = json.loads(response.read().decode("utf-8"))
-        return res["candidates"][0]["content"]["parts"][0]["text"].strip()
+    last_err = None
+    for model in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        try:
+            req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as response:
+                res = json.loads(response.read().decode("utf-8"))
+                if "candidates" in res and len(res["candidates"]) > 0:
+                    return res["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except urllib.error.HTTPError as e:
+            last_err = e
+            # If model not found (404) or overloaded (503), try next fallback model
+            if e.code in (404, 503):
+                continue
+            raise
+        except Exception as e:
+            last_err = e
+            continue
+
+    if last_err:
+        raise last_err
+    raise RuntimeError("Semua model Gemini tidak dapat dijangkau")
+
 
 
 def call_groq(api_key, prompt):
